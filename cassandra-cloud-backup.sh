@@ -22,175 +22,12 @@
 VERSION='1.0'
 SCRIPT_NAME="cassandra-cloud-backup.sh"
 #exit on any error
-set -e
+#set -e
 # Prints the usage for this script
 function print_usage() {
   echo "Cassandra Backup to Google Cloud Storage Version: ${VERSION}"
   cat <<'EOF'
 Usage: ./cassandra-cloud-backup.sh [ options ] <command>
-Description:
-  Utility for creating and managing Cassandra Backups with Google Cloud Storage.
-  Run with admin level privileges.
-
-  The backup command can use gzip or bzip2 for compression, and split large files
-  into multiple smaller files. If incremental backups are enabled in
-  Cassandra, this script can incrementally copy them as they are created, saving
-  time and space. Additionally, this script can be used to cleanup old SnapShot
-  and Incremental files locally.
-
-  The restore command is designed to perform a simple restore of a full snapshot.
-  In the event that you want to restore incremental backups you should start by
-  restoring the last full snapshot prior to your target incremental backup file
-  and manually move the files from each incremental backup in chronological order
-  leading up to the target incremental backup file.  The schema dump and token ring
-  are included in the snapshot backups, but if necessary they must also be restored
-  manually.
-
-Flags:
-  -a, --alt-hostname
-    Specify an alternate server name to be used in the bucket path construction. Used
-    to create or retrieve backups from different servers
-
-  -B, backup
-    Default action is to take a backup
-
-  -b, --gcsbucket
-   Google Cloud Storage bucket used in deployment and by the cluster.
-
-  -c, --clear-old-ss
-    Clear any old SnapShots taken prior to this backup run to save space
-    additionally will clear any old incremental backup files taken immediately
-    following a successful snapshot. this option does nothing with the -i flag
-
-  -C, --clear-old-inc
-    Clear any old incremental backups taken prior to the the current snapshot
-
-  -d, --backupdir
-    The directory in which to store the backup files, be sure that this directory
-    has enough space and the appropriate permissions
-
-  -D, --download-only
-    During a restore this will only download the target files from GCS
-
-  -f, --force
-    Used to force the restore without confirmation prompt
-
-  -h, --help
-    Print this help message.
-
-  -H, --home-dir
-    This is the $CASSANDRA_HOME directory and is only used if the data_directories,
-    commitlog_directory, or the saved_caches_directory values cannot be parsed out of the
-    yaml file.
-
-  -i, --incremental
-    Copy the incremental backup files and do not take a snapshot. Can only
-    be run when compression is enabled with -z or -j
-
-  -j, --bzip
-    Compresses the backup files with bzip2 prior to pushing to Google Cloud Storage
-    This option will use additional local disk space set the --target-gz-dir
-    to use an alternate disk location if free space is an issue
-
-  -k, --keep-old
-    Set this flag on restore to keep a local copy of the old data files
-    Set this flag on backup to keep a local copy of the compressed backup, schema dump,
-    and token ring
-
-  -l, --log-dir
-    Activate logging to file 'CassandraBackup${DATE}.log' from stdout
-    Include an optional directory path to write the file
-    Default path is /var/log/cassandra
-
-  -L, --inc-commit-logs
-    Add commit logs to the backup archive. WARNING: This option can cause the script to
-    fail an active server as the files roll over
-
-  -n, --noop
-    Will attempt a dry run and verify all the settings are correct
-
-  -N, --nice
-    Set the process priority, default 10
-
-  -p
-    The Cassandra User Password if required for security
-
-  -r,  restore
-    Restore a backup, requires a --gcsbucket path and optional --backupdir
-
-  -s, --split-size
-    Split the resulting tar archive into the configured size in Megabytes, default 100M
-
-  -S, --service-name
-    Specify the service name for cassandra, default is cassandra use to stop and start service
-
-  -T, --target-gz-dir
-    Override the directory to save compressed files in case compression is used
-    default is --backupdir/compressed, also used to decompress for restore
-
-  -u
-    The Cassandra User account if required for security
-
-  -U, --auth-file
-    A file that contains authentication credentials for cqlsh and nodetool consisting of
-    two lines:
-      CASSANDRA_USER=username
-      CASSANDRA_PASS=password
-
-  -v, --verbose
-    When provided will print additional information to log file
-
-  -w, --with-caches
-    For posterity's sake, to save the read caches in a backup use this flag, although it
-    likely represents a waste of space
-
-  -y, --yaml
-    Path to the Cassandra yaml configuration file
-    default: /etc/cassandra/cassandra.yaml
-
-  -z, --zip
-    Compresses the backup files with gzip prior to pushing to Google Cloud Storage
-    This option will use additional local disk space set the --target-gz-dir
-    to use an alternate disk location if free space is an issue
-
-Commands:
-  backup, restore, inventory, commands, options
-
-backup                Backup the Cassandra Node based on passed in options
-
-restore               Restore the Cassandra Node from a specific snapshot backup
-                      or download an incremental backup locally and extract
-
-inventory             List available backups
-
-commands              List available commands
-
-options               list available options
-
-Examples:
-  Take a full snapshot, gzip compress it with nice=15,
-  upload into the GCS Bucket, and clear old incremental and snapshot files
-  ./cassandra-cloud-backup.sh -b gs://cassandra-backups123/ -zCc -N 15 backup
-
-  Do a dry run of a full snapshot with verbose output and
-  create list of files that would have been copied
-  ./cassandra-cloud-backup.sh -b gs://cassandra-backups123/ -vn backup
-
-  Backup and bzip2 compress copies of the most recent incremental
-  backup files since the last incremental backup
-  ./cassandra-cloud-backup.sh -b gs://cassandra-backups123/ -ji backup
-
-  Restore a backup without prompting from specified bucket path and keep the old files locally
-  ./cassandra-cloud-backup.sh -b gs://cass-bk123/backups/host01/snpsht/2016-01-20_18-57/ -fk restore
-
-  Restore a specific backup to a custom CASSANDRA_HOME directory with secure credentials in
-  password.txt file with Cassandra running as a Linux service name cass
-  ./cassandra-cloud-backup.sh -b gs://cass-bk123/backups/host01/snpsht/2016-01-20_18-57/ \
-   -y /opt/cass/conf/cassandra.yaml -H /opt/cass -U password.txt -S cass restore
-
-  List inventory of available backups stored in Google Cloud Store
-  ./cassandra-cloud-backup.sh -b gs://cass-bk123 inventory
-
 EOF
 }
 
@@ -242,7 +79,7 @@ function print_help() {
 # Validate that all configuration options are correct and no conflicting options are set
 function validate() {
   touch_logfile
-  single_script_check
+ # single_script_check
   set_auth_string
   verbose_vars
   loginfo "***************VALIDATING INPUT******************"
